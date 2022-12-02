@@ -50,7 +50,7 @@ public class Server {
 		if(serverMessage) // se for uma msg do servidor para todos (cliente entrou/saiu), diz que é do servidor
 			msg = "[Servidor] " + messenger.getRemoteSocketAddress() + msg;
 		else
-			msg = messenger.getRemoteSocketAddress() + " > " + msg;
+			msg = "<" + messenger.getRemoteSocketAddress() + "> " + msg;
 		
 		while(iterator.hasNext()) {
 			ClientSocket clientSocket = iterator.next();
@@ -63,13 +63,14 @@ public class Server {
 	}
 	
 	private void showConnectedClients(ClientSocket requester) { // mostra os clientes conectados
-		String msg = "[Servidor] ";
+		String msg = "[Servidor] Boas vindas ao chat. ";
 		Iterator<ClientSocket> iterator = clients.iterator();
 		
 		if(!iterator.hasNext()) {
 			msg += "Nenhum usuario online.";
 		} else {
-			msg += "Clientes conectados: ";
+			String plural = clients.size() == 1 ? "" : "s";
+			msg += String.format("%d usuario%s conectado%s: ", clients.size(), plural, plural);
 			while(iterator.hasNext()) {
 				msg += iterator.next().getRemoteSocketAddress();
 				if(iterator.hasNext())
@@ -77,9 +78,9 @@ public class Server {
 				else
 					msg += ".";
 			}
-			
-			requester.sendMessage(msg);
 		}
+		
+		requester.sendMessage(msg);
 	}
 	
 	public static void main(String[] args) {
