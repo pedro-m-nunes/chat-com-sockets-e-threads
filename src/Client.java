@@ -6,11 +6,11 @@ import java.util.Scanner;
 public class Client implements Runnable {
 	private static final String SERVER_ADDRESS = "127.0.0.1";
 	private ClientSocket clientSocket;
-	private Scanner scanner;
-	static final String EXIT_COMMAND = "/exit";
+	private Scanner scan;
+	static final String EXIT_COMMAND = "QUIT";
 	
 	public Client() {
-		scanner = new Scanner(System.in);
+		scan = new Scanner(System.in);
 	}
 	
 	public void start() throws UnknownHostException, IOException {
@@ -20,7 +20,7 @@ public class Client implements Runnable {
 			System.out.println("Entrou no chat porta " + Server.PORT + ", identificado como cliente porta " + clientSocket.getLocalPort() + ".");
 			System.out.println("Digite uma mensagem ou digite \"" + EXIT_COMMAND + "\" para sair.\n");
 
-			new Thread(this).start();
+			new Thread(this).start(); // executa o run
 			
 			this.messageLoop();
 		} finally {
@@ -31,10 +31,10 @@ public class Client implements Runnable {
 		}
 	}
 	
-	private void messageLoop() throws IOException {
+	private void messageLoop() throws IOException { // loop; lê as msgs digitadas e envia ao servidor
 		String str;
 		do {
-			str = scanner.nextLine();
+			str = scan.nextLine();
 			if(!str.isBlank())
 				clientSocket.sendMessage(str);
 		} while(!str.equals(EXIT_COMMAND));
@@ -42,9 +42,9 @@ public class Client implements Runnable {
 	
 	@Override
 	public void run() { // recebe as mensagens (em uma thread separada)
-		String msg;
-		while((msg = clientSocket.getMessage()) != null) {
-			System.out.println(msg);
+		String str;
+		while((str = clientSocket.getMessage()) != null) {
+			System.out.println(str);
 		}
 	}
 	
@@ -53,7 +53,7 @@ public class Client implements Runnable {
 			Client client = new Client();
 			client.start();
 		} catch(IOException e) {
-			System.out.println("Erro ao iniciar cliente: " + e.getMessage());
+			System.out.println(e.getMessage());
 		}
 	}
 }
