@@ -7,7 +7,6 @@ public class Client implements Runnable {
 	private static final String SERVER_ADDRESS = "127.0.0.1";
 	private ClientSocket clientSocket;
 	private Scanner scan;
-	static final String EXIT_COMMAND = "QUIT";
 	
 	public Client() {
 		scan = new Scanner(System.in);
@@ -18,7 +17,7 @@ public class Client implements Runnable {
 			clientSocket = new ClientSocket(new Socket(SERVER_ADDRESS, Server.PORT));
 			System.out.println(SERVER_ADDRESS + "\n");
 			System.out.println("Entrou no chat porta " + Server.PORT + ", identificado como cliente porta " + clientSocket.getLocalPort() + ".");
-			System.out.println("Digite uma mensagem ou digite \"" + EXIT_COMMAND + "\" para sair.\n");
+			System.out.println("Digite uma mensagem ou digite \"" + Server.EXIT_COMMAND + "\" para sair.\n");
 
 			new Thread(this).start(); // executa o run
 			
@@ -37,7 +36,7 @@ public class Client implements Runnable {
 			str = scan.nextLine();
 			if(!str.isBlank())
 				clientSocket.sendMessage(str);
-		} while(!str.equals(EXIT_COMMAND));
+		} while(!str.equals(Server.EXIT_COMMAND));
 	}
 	
 	@Override

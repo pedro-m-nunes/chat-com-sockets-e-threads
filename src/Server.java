@@ -1,26 +1,36 @@
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.List;
+import java.util.Scanner;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-public class Server {
-	public static final int PORT = 12345;
+//histórico de msgs (?), clientes saem quando o servidor cai, nome de usuário, comandos '/' (ver usuarios online...)
+
+public class Server implements Runnable {
+	static final int PORT = 12345;
+	static final String EXIT_COMMAND = "QUIT";
+	private final String SERVER_MSG_PREFIX = "[Servidor]";
+	
 	private ServerSocket serverSocket;
 	private final List<ClientSocket> clients = new LinkedList<>();
+	private Scanner scan;
 	
 	public void start() throws IOException {
 		serverSocket = new ServerSocket(PORT);
-		System.out.println("Servidor iniciado na porta " + serverSocket.getLocalPort() + ".");
+		System.out.println("Servidor iniciado na porta " + serverSocket.getLocalPort() + ".\nDigite uma mensagem ou digite \"" + EXIT_COMMAND + "\" para fechar o servidor.\n");
+		
+		scan = new Scanner(System.in);
+		new Thread(this).start();
 		
 		this.clientConnectionLoop();
 	}
 	
-	private void clientConnectionLoop() throws IOException {
+	private void clientConnectionLoop() throws IOException { // conexão dos clientes
 		while(true) {
 			ClientSocket clientSocket = new ClientSocket(serverSocket.accept());
 			System.out.println("Cliente " + clientSocket.getRemoteSocketAddress() + " entrou no chat.");
-			this.sendMessageToAll(clientSocket, " entrou no chat.", true);
+			this.sendServerMessage(clientSocket, " entrou no chat.");
 			this.showConnectedClients(clientSocket);
 			clients.add(clientSocket);
 			new Thread(() -> this.clientMessageLoop(clientSocket)).start(); // lambda expression
@@ -31,7 +41,7 @@ public class Server {
 		String msg;
 		try {
 			while((msg = clientSocket.getMessage()) != null) {
-				if(msg.equals(Client.EXIT_COMMAND)) {
+				if(msg.equals(EXIT_COMMAND)) {
 					return;
 				}
 				
@@ -40,21 +50,19 @@ public class Server {
 			}
 		} finally {
 			System.out.println("Cliente " + clientSocket.getRemoteSocketAddress() + " saiu no chat.");
-			this.sendMessageToAll(clientSocket, " saiu do chat.", true);
+			this.sendServerMessage(clientSocket, " saiu do chat.");
 			clientSocket.close();
 		}
 	}
 	
-	private void sendMessageToAll(ClientSocket messenger, String msg, boolean serverMessage) { // "broadcast", manda para todos os clientes
+	private void sendMessageToAll(ClientSocket clientInvolved, String msg, boolean serverMessage) { // "broadcast", manda para todos os clientes
 		Iterator<ClientSocket> iterator = clients.iterator();
-		if(serverMessage) // se for uma msg do servidor para todos (cliente entrou/saiu), diz que é do servidor
-			msg = "[Servidor] " + messenger.getRemoteSocketAddress() + msg;
-		else
-			msg = "<" + messenger.getRemoteSocketAddress() + "> " + msg;
+		
+		if(!serverMessage) msg = "<" + clientInvolved.getRemoteSocketAddress() + "> " + msg;
 		
 		while(iterator.hasNext()) {
 			ClientSocket clientSocket = iterator.next();
-			if(!clientSocket.equals(messenger)) { // não deixa mandar a msg para quem a enviou
+			if(clientInvolved == null || !clientSocket.equals(clientInvolved)) { // não deixa mandar a msg para quem a enviou
 				if(!clientSocket.sendMessage(msg)) {
 					iterator.remove();
 				}
@@ -62,8 +70,23 @@ public class Server {
 		}
 	}
 	
+	private void sendServerMessage(String msg) {
+		msg = SERVER_MSG_PREFIX + " " + msg;
+		this.sendMessageToAll(null, msg, true);
+	}
+	
+	private void sendServerMessage(ClientSocket clientInvolved, String msg) {
+		msg = SERVER_MSG_PREFIX + " " + clientInvolved.getRemoteSocketAddress() + msg;
+		this.sendMessageToAll(clientInvolved, msg, true);
+	}
+	
+	private void sendMessageViaServer(String msg) {
+		msg = "<Servidor> " + msg;
+		this.sendMessageToAll(null, msg, true);
+	}
+	
 	private void showConnectedClients(ClientSocket requester) { // mostra os clientes conectados
-		String msg = "[Servidor] Boas vindas ao chat. ";
+		String msg = SERVER_MSG_PREFIX + " Boas vindas ao chat. ";
 		Iterator<ClientSocket> iterator = clients.iterator();
 		
 		if(!iterator.hasNext()) {
@@ -81,6 +104,21 @@ public class Server {
 		}
 		
 		requester.sendMessage(msg);
+	}
+	
+	@Override
+	public void run() { // entrada do teclado no servidor (thread separada)
+		while(true) {
+			String msg = scan.nextLine();
+			
+			if(msg.equals(EXIT_COMMAND)) {
+				this.sendServerMessage("Chat fechado pelo administrador. Digite \"" + EXIT_COMMAND + "\" para sair.");
+				System.out.println("Servidor finalizado pelo administrador.");
+				System.exit(0);
+			}
+			
+			this.sendMessageViaServer(msg);
+		}
 	}
 	
 	public static void main(String[] args) {
